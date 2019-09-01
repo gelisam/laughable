@@ -47,19 +47,19 @@ import Laughable.Internal.OracleMachine
 -- [1,2,3] 'j' []
 
 
--- | Given a partially-executed OracleMachine computation, we keep track of the
--- questions it has already asked to the oracle, the answers it has received,
--- and most importantly a snapshot of the computation at the moment it asked
--- the question, so we can investigate what would have happened if the answer
--- had been different. Not that the oracle has ever been wrong.
+-- | Given a partially-executed 'OracleMachine' computation, we are interested
+-- in exploring alternative executions by varying one answer and then a fraction
+-- of the following questions. To do that, we remember all the answers we have
+-- received so far, and for each of those, we have a 'Suspended' computation
+-- which would allow us to explore what would have happened if the answer had
+-- been different.
 --
--- If we are currently exploring such an alternative path, we may also know
--- some of the future answers in advance, assuming that the questions will be
--- the same.
+-- If we are currently exploring such an alternative path, we may also have a
+-- list of replacements for the questions to come.
 data OracleBookkeeping c a j r = OracleBookkeeping
-  { _past    :: Seq (Suspended c j j r)
+  { _past    :: Seq (Suspended c c j r)
   , _present :: a
-  , _future  :: [c]
+  , _future  :: [j]
   }
 
 makeLenses ''OracleBookkeeping
@@ -71,25 +71,25 @@ empty
   = OracleBookkeeping mempty () mempty
 
 right
-  :: (a -> Maybe c -> (Suspended c j j r, b))
+  :: (a -> Maybe j -> (Suspended c c j r, b))
   -> OracleBookkeeping c a j r
   -> OracleBookkeeping c b j r
 right f o
   = OracleBookkeeping past' b future'
   where
     a       = o ^. present
-    maybeC  = firstOf (future . each) o
-    (s, b)  = f a maybeC
+    maybeJ  = firstOf (future . each) o
+    (s, b)  = f a maybeJ
     past'   = (o ^. past) |> s
     future' = drop 1 (o ^. future)
 
 left
-  :: (Suspended c j j r -> a -> (b, c))
+  :: (Suspended c c j r -> a -> (b, j))
   -> OracleBookkeeping c a j r
   -> Maybe (OracleBookkeeping c b j r)
 left f o = do
   past' :> s <- pure (o ^. past)
   let a       = o ^. present
-  let (b, c)  = f s a
-  let future' = c : o ^. future
+  let (b, j)  = f s a
+  let future' = j : o ^. future
   pure $ OracleBookkeeping past' b future'
