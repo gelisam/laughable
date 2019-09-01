@@ -11,11 +11,11 @@ import Laughable.Internal.OracleMachine
 -- let test :: Show a
 --          => OracleBookkeeping Int a Int () -> IO ()
 --     test o = do
---       putStr $ show (o ^.. past . each . thoughts)
+--       putStr $ show (o ^.. clowns)
 --       putStr " "
 --       putStr $ show (o ^. present)
 --       putStr " "
---       putStr $ show (o ^. future)
+--       putStr $ show (o ^.. jokers)
 --       putStrLn ""
 -- :}
 --
@@ -93,3 +93,14 @@ left f o = do
   let (b, j)  = f s a
   let future' = j : o ^. future
   pure $ OracleBookkeeping past' b future'
+
+
+clowns
+  :: Traversal' (OracleBookkeeping c a j r) c
+clowns
+  = past . each . thoughts
+
+jokers
+  :: Traversal' (OracleBookkeeping c a j r) j
+jokers
+  = future . each
