@@ -13,15 +13,14 @@ import Control.Monad.Trans.State
 -- 'j' and receiving answers of type 'c'.
 data OracleMachine c j r
   = Nil r
-  | Cons (Suspended c () j r)
+  | Cons (Suspended c j j r)
   deriving Functor
 
 -- | An OracleMachine computation, suspended while the oracle thinks about the
--- answer. Her current thoughts have type 'a', but we can only proceed once she
--- has shaped them into a 'c'.
+-- answer. At first, her thoughts contain the question, of type 'j', but we can
+-- only proceed once she has shaped them into a 'c'.
 data Suspended c a j r = Suspended
-  { _question     :: j
-  , _answer       :: a
+  { _thoughts     :: a
   , _continuation :: c -> OracleMachine c j r
   }
   deriving Functor
@@ -30,17 +29,11 @@ makePrisms ''OracleMachine
 makeLenses ''Suspended
 
 
-resumeWithQuestion
-  :: Suspended a x a r
-  -> OracleMachine a a r
-resumeWithQuestion s
-  = (s ^. continuation) (s ^. question)
-
-resumeWithAnswer
+resumeWithThoughts
   :: Suspended c c j r
   -> OracleMachine c j r
-resumeWithAnswer s
-  = (s ^. continuation) (s ^. answer)
+resumeWithThoughts s
+  = (s ^. continuation) (s ^. thoughts)
 
 resumeWithValue
   :: c
@@ -52,14 +45,14 @@ resumeWithValue c s
 
 -- |
 -- >>> let Left s1 = runOracleMachine example
--- >>> let Left s2 = runOracleMachine $ resumeWithQuestion s1
--- >>> let Left s3 = runOracleMachine $ resumeWithAnswer (s2 & answer %~ show)
--- >>> let Right r = runOracleMachine $ resumeWithValue "mu" s3
+-- >>> let Left s2 = runOracleMachine $ resumeWithThoughts s1
+-- >>> let Left s3 = runOracleMachine $ resumeWithValue "mu" s2
+-- >>> let Right r = runOracleMachine $ resumeWithThoughts s3
 -- >>> r
--- ["foo","()","mu"]
+-- ["foo","mu","baz"]
 runOracleMachine
   :: OracleMachine c j r
-  -> Either (Suspended c () j r) r
+  -> Either (Suspended c j j r) r
 runOracleMachine (Nil r)
   = Right r
 runOracleMachine (Cons s)
@@ -79,7 +72,7 @@ runOracleMachineWithAction act = \case
   Nil r -> do
     pure r
   Cons s -> do
-    let j = s ^. question
+    let j = s ^. thoughts
     c <- act j
     runOracleMachineWithAction act $ resumeWithValue c s
 
@@ -121,20 +114,20 @@ runOracleMachineWithIdentity
 askOracle
   :: j -> OracleMachine c j c
 askOracle j
-  = Cons $ Suspended j () pure
+  = Cons $ Suspended j pure
 
 
 instance Applicative (OracleMachine a b) where
   pure = Nil
   Nil f <*> lr
     = f <$> lr
-  Cons (Suspended a () lf) <*> lr
-    = Cons $ Suspended a () $ \b
+  Cons (Suspended a lf) <*> lr
+    = Cons $ Suspended a $ \b
    -> lf b <*> lr
 
 instance Monad (OracleMachine a b) where
   Nil r >>= cc
     = cc r
-  Cons (Suspended a () lf) >>= cc
-    = Cons $ Suspended a () $ \b
+  Cons (Suspended a lf) >>= cc
+    = Cons $ Suspended a $ \b
    -> lf b >>= cc
