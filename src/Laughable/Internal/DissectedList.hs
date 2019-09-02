@@ -33,9 +33,9 @@ import Data.Sequence (Seq)
 --       -> IO (DissectedList c c j)
 --     testClimbLeft d = do
 --       case climbLeft d of
---         Nothing -> do
+--         Left _ -> do
 --           error "testClimbLeft: climbLeft thinks we're at the leftmost position"
---         Just d -> do
+--         Right d -> do
 --           printDissectedList d
 --           pure d
 --     testClimbRight
@@ -44,30 +44,30 @@ import Data.Sequence (Seq)
 --       -> IO (DissectedList c j j)
 --     testClimbRight d = do
 --       case climbRight d of
---         Nothing -> do
+--         Left _ -> do
 --           error "testClimbRight: climbRight thinks we're at the rightmost position"
---         Just d -> do
+--         Right d -> do
 --           printDissectedList d
 --           pure d
 --     testLeftmost
 --       :: (Show c, Show j)
 --       => DissectedList c () j
---       -> IO (DissectedList c () j)
+--       -> IO (DissectedList void () j)
 --     testLeftmost d = do
 --       case climbLeft d of
---         Nothing -> do
+--         Left d -> do
 --           pure d
---         Just _ -> do
+--         Right _ -> do
 --           error "testClimbLeft: climbLeft does not think we're at the leftmost position"
 --     testRightmost
 --       :: (Show c, Show j)
 --       => DissectedList c () j
---       -> IO (DissectedList c () j)
+--       -> IO (DissectedList c () void)
 --     testRightmost d = do
 --       case climbRight d of
---         Nothing -> do
+--         Left d -> do
 --           pure d
---         Just _ -> do
+--         Right _ -> do
 --           error "testClimbRight: climbRight does not think we're at the rightmost position"
 -- :}
 --
@@ -87,13 +87,13 @@ import Data.Sequence (Seq)
 --              >=> testTransform (focus %~ (* 10))
 --              >=> testTransform slideLeft
 --              >=> testLeftmost
---              >=> testTransform (focus .~ 1)
+--              >=> testTransform (focus .~ "10")
 --              >=> testTransform slideRight
 --              >=> testClimbRight
---              >=> testTransform (focus %~ (`div` 10))
+--              >=> testTransform (focus %~ show)
 --              >=> testTransform slideRight
 --              >=> testClimbRight
---              >=> testTransform (focus %~ (`div` 10))
+--              >=> testTransform (focus %~ show)
 --              >=> testTransform slideRight
 --              >=> testRightmost
 --                )
@@ -108,14 +108,14 @@ import Data.Sequence (Seq)
 -- [] 2 [30]
 -- [] 20 [30]
 -- [] () [20,30]
--- [] 1 [20,30]
--- [1] () [20,30]
--- [1] 20 [30]
--- [1] 2 [30]
--- [1,2] () [30]
--- [1,2] 30 []
--- [1,2] 3 []
--- [1,2,3] () []
+-- [] "10" [20,30]
+-- ["10"] () [20,30]
+-- ["10"] 20 [30]
+-- ["10"] "20" [30]
+-- ["10","20"] () [30]
+-- ["10","20"] 30 []
+-- ["10","20"] "30" []
+-- ["10","20","30"] () []
 
 
 -- | Zero or more 'c's, one 'a', then zero or more 'j's.
@@ -146,17 +146,23 @@ singleton a
 
 climbLeft
   :: DissectedList c () j
-  -> Maybe (DissectedList c c j)
+  -> Either (DissectedList void () j)
+            (DissectedList c c j)
 climbLeft d = do
-  clownSeq' :> c <- pure (d ^. clownSeq)
-  pure $ DissectedList clownSeq' c (d ^. jokerList)
+  case d ^. clownSeq of
+    clownSeq' :> c
+      -> Right $ DissectedList clownSeq' c (d ^. jokerList)
+    _ -> Left $ DissectedList mempty () (d ^. jokerList)
 
 climbRight
   :: DissectedList c () j
-  -> Maybe (DissectedList c j j)
+  -> Either (DissectedList c () void)
+            (DissectedList c j j)
 climbRight d = do
-  j :< jokerList' <- pure (d ^. jokerList)
-  pure $ DissectedList (d ^. clownSeq) j jokerList'
+  case d ^. jokerList of
+    j :< jokerList'
+      -> Right $ DissectedList (d ^. clownSeq) j jokerList'
+    _ -> Left $ DissectedList (d ^. clownSeq) () mempty
 
 slideLeft
   :: DissectedList c j j
