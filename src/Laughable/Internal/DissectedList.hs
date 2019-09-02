@@ -18,116 +18,104 @@ import Data.Sequence (Seq)
 --       putStr " "
 --       putStr $ show (d ^.. jokers)
 --       putStrLn ""
---     testLeft
---       :: (Show c, Show b, Show j, Eq c)
---       => (c -> a -> (b, j))
---       -> DissectedList c a j
---       -> IO (DissectedList c b j)
---     testLeft f d = do
---       case ( d & extendLeft (\maybeC _ -> (maybeC, undefined))
---                & view focus
---            , d & left (\c _ -> (c, undefined))
---                & preview (_Just . focus)
---            , d & left f
---            )
---            of
---         (Nothing, _, _) -> do
---           error "testLeft: extendLeft thinks we're at the leftmost position"
---         (_, Nothing, _) -> do
---           error "testLeft: left thinks we're at the leftmost position"
---         (_, _, Nothing) -> do
---           error "testLeft: left thinks we're at the leftmost position"
---         (Just expectedC, Just actualC, Just d')
---           | expectedC /= actualC -> do
---             error "testLeft: extendLeft and left gave different clowns"
---           | otherwise -> do
---             printDissectedList d'
---             pure d'
---     testRight
---       :: (Show c, Show b, Show j, Eq j)
---       => (a -> j -> (c, b))
---       -> DissectedList c a j
---       -> IO (DissectedList c b j)
---     testRight f d = do
---       case ( d & extendRight (\_ maybeJ -> (undefined, maybeJ))
---                & view focus
---            , d & right (\_ j -> (undefined, j))
---                & preview (_Just . focus)
---            , d & right f
---            )
---            of
---         (Nothing, _, _) -> do
---           error "testRight: extendRight thinks we're at the rightmost position"
---         (_, Nothing, _) -> do
---           error "testRight: right thinks we're at the rightmost position"
---         (_, _, Nothing) -> do
---           error "testRight: right thinks we're at the rightmost position"
---         (Just expectedJ, Just actualJ, Just d')
---           | expectedJ /= actualJ -> do
---             error "testRight: extendRight and right gave different jokers"
---           | otherwise -> do
---             printDissectedList d'
---             pure d'
---     testExtendLeft
+--     testTransform
 --       :: (Show c, Show b, Show j)
---       => (a -> (b, j))
---       -> DissectedList c a j
+--       => (a -> DissectedList c b j)
+--       -> a
 --       -> IO (DissectedList c b j)
---     testExtendLeft f d = do
---       case ( d & left undefined
---            , d & extendLeft (\maybeC _ -> (maybeC, undefined))
---                & view focus
---            , d & extendLeft (\Nothing a -> f a)
---            )
---            of
---         (Just _, _, _) -> do
---           error "testExtendLeft: left thinks we're not at the leftmost position"
---         (_, Just _, _) -> do
---           error "testExtendLeft: left thinks we're not at the leftmost position"
---         (Nothing, Nothing, d') -> do
---           printDissectedList d'
---           pure d'
---     testExtendRight
---       :: (Show c, Show b, Show j)
---       => (a -> (c, b))
---       -> DissectedList c a j
---       -> IO (DissectedList c b j)
---     testExtendRight f d = do
---       case ( d & right undefined
---            , d & extendRight (\_ maybeJ -> (undefined, maybeJ))
---                & view focus
---            , d & extendRight (\a Nothing -> f a)
---            )
---            of
---         (Just _, _, _) -> do
---           error "testExtendRight: right thinks we're not at the rightmost position"
---         (_, Just _, _) -> do
---           error "testExtendRight: right thinks we're not at the rightmost position"
---         (Nothing, Nothing, d') -> do
---           printDissectedList d'
---           pure d'
+--     testTransform f a = do
+--       d <- pure (f a)
+--       printDissectedList d
+--       pure d
+--     testClimbLeft
+--       :: (Show c, Show j)
+--       => DissectedList c () j
+--       -> IO (DissectedList c c j)
+--     testClimbLeft d = do
+--       case climbLeft d of
+--         Nothing -> do
+--           error "testClimbLeft: climbLeft thinks we're at the leftmost position"
+--         Just d -> do
+--           printDissectedList d
+--           pure d
+--     testClimbRight
+--       :: (Show c, Show j)
+--       => DissectedList c () j
+--       -> IO (DissectedList c j j)
+--     testClimbRight d = do
+--       case climbRight d of
+--         Nothing -> do
+--           error "testClimbRight: climbRight thinks we're at the rightmost position"
+--         Just d -> do
+--           printDissectedList d
+--           pure d
+--     testLeftmost
+--       :: (Show c, Show j)
+--       => DissectedList c () j
+--       -> IO (DissectedList c () j)
+--     testLeftmost d = do
+--       case climbLeft d of
+--         Nothing -> do
+--           pure d
+--         Just _ -> do
+--           error "testClimbLeft: climbLeft does not think we're at the leftmost position"
+--     testRightmost
+--       :: (Show c, Show j)
+--       => DissectedList c () j
+--       -> IO (DissectedList c () j)
+--     testRightmost d = do
+--       case climbRight d of
+--         Nothing -> do
+--           pure d
+--         Just _ -> do
+--           error "testClimbRight: climbRight does not think we're at the rightmost position"
 -- :}
 --
 -- >>> import Control.Monad
 -- >>> :{
--- singleton 'a' & ( testExtendRight (\a -> (2, succ a))
---               >=> testExtendRight (\a -> (3, succ a))
---               >=> testLeft (\c a -> (succ a, c * 10))
---               >=> testLeft (\c a -> (succ a, c * 10))
---               >=> testExtendLeft (\a -> (succ a, 10))
---               >=> testRight (\a c -> (c `div` 10, succ a))
---               >=> testRight (\a c -> (c `div` 10, succ a))
---               >=> testRight (\a c -> (c `div` 10, succ a))
---                 )
+-- singleton () & ( testRightmost
+--              >=> testTransform (focus .~ 2)
+--              >=> testTransform slideRight
+--              >=> testRightmost
+--              >=> testTransform (focus .~ 3)
+--              >=> testTransform slideRight
+--              >=> testRightmost
+--              >=> testClimbLeft
+--              >=> testTransform (focus %~ (* 10))
+--              >=> testTransform slideLeft
+--              >=> testClimbLeft
+--              >=> testTransform (focus %~ (* 10))
+--              >=> testTransform slideLeft
+--              >=> testLeftmost
+--              >=> testTransform (focus .~ 1)
+--              >=> testTransform slideRight
+--              >=> testClimbRight
+--              >=> testTransform (focus %~ (`div` 10))
+--              >=> testTransform slideRight
+--              >=> testClimbRight
+--              >=> testTransform (focus %~ (`div` 10))
+--              >=> testTransform slideRight
+--              >=> testRightmost
+--                )
 -- :}
--- [2] 'b' []
--- [2,3] 'c' []
--- [2] 'd' [30]
--- [] 'e' [20,30]
--- [] 'f' [10,20,30]
--- [1] 'g' [20,30]
--- [1,2] 'h' [30]
--- [1,2,3] 'i' []
+-- [] 2 []
+-- [2] () []
+-- [2] 3 []
+-- [2,3] () []
+-- [2] 3 []
+-- [2] 30 []
+-- [2] () [30]
+-- [] 2 [30]
+-- [] 20 [30]
+-- [] () [20,30]
+-- [] 1 [20,30]
+-- [1] () [20,30]
+-- [1] 20 [30]
+-- [1] 2 [30]
+-- [1,2] () [30]
+-- [1,2] 30 []
+-- [1,2] 3 []
+-- [1,2,3] () []
 
 
 -- | Zero or more 'c's, one 'a', then zero or more 'j's.
@@ -145,51 +133,46 @@ singleton
 singleton a
   = DissectedList mempty a mempty
 
-left
-  :: (c -> a -> (b, j))
-  -> DissectedList c a j
-  -> Maybe (DissectedList c b j)
-left f d = do
+
+-- Imagine there is a sequence of elements with empty space around and
+-- in-between each of them:
+--
+--    _o_o_o_o_
+--
+-- If we are in an empty space, we can climb to the top of an element, but that
+-- may fail if there is no element in that direction. If we are already on top
+-- of an element, we may slide down the the empty space on either side, that
+-- operation will always succeed.
+
+climbLeft
+  :: DissectedList c () j
+  -> Maybe (DissectedList c c j)
+climbLeft d = do
   clownSeq' :> c <- pure (d ^. clownSeq)
-  let a          = d ^. focus
-  let (b, j)     = f c a
-  let jokerList' = j : (d ^. jokerList)
-  pure $ DissectedList clownSeq' b jokerList'
+  pure $ DissectedList clownSeq' c (d ^. jokerList)
 
-right
-  :: (a -> j -> (c, b))
-  -> DissectedList c a j
-  -> Maybe (DissectedList c b j)
-right f d = do
-  let a           = d ^. focus
+climbRight
+  :: DissectedList c () j
+  -> Maybe (DissectedList c j j)
+climbRight d = do
   j :< jokerList' <- pure (d ^. jokerList)
-  let (c, b)      = f a j
-  let clownSeq'   = (d ^. clownSeq) |> c
-  pure $ DissectedList clownSeq' b jokerList'
+  pure $ DissectedList (d ^. clownSeq) j jokerList'
 
-extendLeft
-  :: (Maybe c -> a -> (b, j))
-  -> DissectedList c a j
-  -> DissectedList c b j
-extendLeft f d
-  = let (clownSeq', maybeC) = case d ^. clownSeq of
-          clownSeq' :> c
-            -> (clownSeq', Just c)
-          _ -> (mempty, Nothing)
-        (focus', j) = f maybeC (d ^. focus)
-    in DissectedList clownSeq' focus' (j : d ^. jokerList)
+slideLeft
+  :: DissectedList c j j
+  -> DissectedList c () j
+slideLeft d
+  = DissectedList (d ^. clownSeq)
+                  ()
+                  (d ^. focus <| d ^. jokerList)
 
-extendRight
-  :: (a -> Maybe j -> (c, b))
-  -> DissectedList c a j
-  -> DissectedList c b j
-extendRight f d
-  = let (maybeJ, jokerList') = case d ^. jokerList of
-          j : jokerList'
-            -> (Just j, jokerList')
-          _ -> (Nothing, mempty)
-        (c, focus') = f (d ^. focus) maybeJ
-    in DissectedList (d ^. clownSeq |> c) focus' jokerList'
+slideRight
+  :: DissectedList c c j
+  -> DissectedList c () j
+slideRight d
+  = DissectedList (d ^. clownSeq |> d ^. focus)
+                  ()
+                  (d ^. jokerList)
 
 
 clowns
