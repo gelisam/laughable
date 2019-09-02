@@ -2,7 +2,9 @@
 {-# OPTIONS -Wno-name-shadowing #-}
 module Laughable.Internal.OracleMachine where
 
+import Control.Applicative
 import Control.Lens
+import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.State
 
 -- $setup
@@ -78,18 +80,25 @@ runOracleMachineWithAction act = \case
     runOracleMachineWithAction act $ resumeWithValue c s
 
 -- |
--- >>> runOracleMachineWithReplacements ["fool", "bard"] example
--- ["fool","bard","baz"]
-runOracleMachineWithReplacements
-  :: [a]
-  -> OracleMachine a a r -> r
-runOracleMachineWithReplacements as o
-  = flip evalState as
+-- >>> runOracleMachineWithAnswers ['a', 'b'] example
+-- Nothing
+-- >>> runOracleMachineWithAnswers ['a', 'b', 'c'] example
+-- Just "abc"
+-- >>> runOracleMachineWithAnswers ['a', 'b', 'c', 'd'] example
+-- Just "abc"
+runOracleMachineWithAnswers
+  :: [c]
+  -> OracleMachine c j r
+  -> Maybe r
+runOracleMachineWithAnswers as o
+  = runIdentity
+  $ runMaybeT
+  $ flip evalStateT as
   $ flip runOracleMachineWithAction o
-  $ \a -> do
+  $ \_ -> do
       get >>= \case
         [] -> do
-          pure a
+          empty
         (a:as) -> do
           put as
           pure a
