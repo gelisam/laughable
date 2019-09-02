@@ -16,11 +16,12 @@ data OracleMachine c j r
   | Cons (Suspended c j j r)
   deriving Functor
 
--- | An OracleMachine computation, suspended while the oracle thinks about the
--- answer. At first, her thoughts contain the question, of type 'j', but we can
--- only proceed once she has shaped them into a 'c'.
+-- | An OracleMachine computation, suspended while the oracle focusses her
+-- thoughts on the question, of type 'j'. Her focus may then wander and have
+-- other types, but we can only proceed once she focusses on an answer, of type
+-- 'c'.
 data Suspended c a j r = Suspended
-  { _thoughts     :: a
+  { _focus        :: a
   , _continuation :: c -> OracleMachine c j r
   }
   deriving Functor
@@ -29,11 +30,11 @@ makePrisms ''OracleMachine
 makeLenses ''Suspended
 
 
-resumeWithThoughts
+resumeWithFocus
   :: Suspended c c j r
   -> OracleMachine c j r
-resumeWithThoughts s
-  = (s ^. continuation) (s ^. thoughts)
+resumeWithFocus s
+  = (s ^. continuation) (s ^. focus)
 
 resumeWithValue
   :: c
@@ -45,9 +46,9 @@ resumeWithValue c s
 
 -- |
 -- >>> let Left s1 = runOracleMachine example
--- >>> let Left s2 = runOracleMachine $ resumeWithThoughts s1
+-- >>> let Left s2 = runOracleMachine $ resumeWithFocus s1
 -- >>> let Left s3 = runOracleMachine $ resumeWithValue "mu" s2
--- >>> let Right r = runOracleMachine $ resumeWithThoughts s3
+-- >>> let Right r = runOracleMachine $ resumeWithFocus s3
 -- >>> r
 -- ["foo","mu","baz"]
 runOracleMachine
@@ -72,7 +73,7 @@ runOracleMachineWithAction act = \case
   Nil r -> do
     pure r
   Cons s -> do
-    let j = s ^. thoughts
+    let j = s ^. focus
     c <- act j
     runOracleMachineWithAction act $ resumeWithValue c s
 
