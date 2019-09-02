@@ -193,11 +193,11 @@ extendRight f d
 
 
 clowns
-  :: Traversal' (DissectedList c a j) c
+  :: Traversal (DissectedList c a j) (DissectedList c' a j) c c'
 clowns
   = clownSeq . each
 
 jokers
-  :: Traversal' (DissectedList c a j) j
+  :: Traversal (DissectedList c a j) (DissectedList c a j') j j'
 jokers
   = jokerList . each
