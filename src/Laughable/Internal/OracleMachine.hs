@@ -9,7 +9,7 @@ import Control.Monad.Trans.State
 -- >>> let example = mapM askOracle ["foo", "bar", "baz"]
 
 
--- | A computation which computes an 'a' by asking an oracle questions of type
+-- | A computation which computes an 'r' by asking an oracle questions of type
 -- 'j' and receiving answers of type 'c'.
 data OracleMachine c j r
   = Nil r
@@ -117,17 +117,17 @@ askOracle j
   = Cons $ Suspended j pure
 
 
-instance Applicative (OracleMachine a b) where
+instance Applicative (OracleMachine c j) where
   pure = Nil
   Nil f <*> lr
     = f <$> lr
-  Cons (Suspended a lf) <*> lr
-    = Cons $ Suspended a $ \b
-   -> lf b <*> lr
+  Cons (Suspended j lf) <*> lr
+    = Cons $ Suspended j $ \c
+   -> lf c <*> lr
 
-instance Monad (OracleMachine a b) where
+instance Monad (OracleMachine c j) where
   Nil r >>= cc
     = cc r
-  Cons (Suspended a lf) >>= cc
-    = Cons $ Suspended a $ \b
-   -> lf b >>= cc
+  Cons (Suspended j lf) >>= cc
+    = Cons $ Suspended j $ \c
+   -> lf c >>= cc
