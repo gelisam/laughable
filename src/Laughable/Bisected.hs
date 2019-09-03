@@ -9,6 +9,91 @@ import Laughable.Internal.SplitTraversable (SplitTraversable(..))
 import qualified Laughable.Internal.DissectedList as DissectedList
 import qualified Laughable.Internal.SplitTraversable as SplitTraversable
 
+-- $setup
+-- >>> :{
+-- let printBisected
+--       :: (Show c, Show j)
+--       => Bisected t c j
+--       -> IO ()
+--     printBisected d = do
+--       putStr $ show (d ^.. clowns)
+--       putStr " "
+--       putStr $ show (d ^.. jokers)
+--       putStrLn ""
+--     testLeft
+--       :: (Show c, Show j)
+--       => (c -> j)
+--       -> Bisected t c j
+--       -> IO (Bisected t c j)
+--     testLeft f b = do
+--       case left f b of
+--         Left _ -> do
+--           error "testLeft: left thinks we're at the leftmost position"
+--         Right b -> do
+--           printBisected b
+--           pure b
+--     testRight
+--       :: (Show c, Show j)
+--       => (j -> c)
+--       -> Bisected t c j
+--       -> IO (Bisected t c j)
+--     testRight f b = do
+--       case right f b of
+--         Left _ -> do
+--           error "testRight: right thinks we're at the rightmost position"
+--         Right b -> do
+--           printBisected b
+--           pure b
+--     testLeftmost
+--       :: Bisected t c j
+--       -> IO (Bisected t void j)
+--     testLeftmost d = do
+--       case left undefined d of
+--         Left d -> do
+--           pure d
+--         Right _ -> do
+--           error "testLeftmost: left does not think we're at the leftmost position"
+--     testRightmost
+--       :: Bisected t c j
+--       -> IO (Bisected t c void)
+--     testRightmost d = do
+--       case right undefined d of
+--         Left d -> do
+--           pure d
+--         Right _ -> do
+--           error "testRightmost: right does not think we're at the rightmost position"
+-- :}
+--
+-- >>> import Control.Monad
+-- >>> import qualified Laughable.Traversable as Traversable
+-- >>> :{
+-- fromTraversable [1,2,3] & ( testLeftmost
+--                         >=> testRight (* 10)
+--                         >=> testRight (* 10)
+--                         >=> testRight (* 10)
+--                         >=> testRightmost
+--                         >=> testLeft (`div` 10)
+--                         >=> testLeft (`div` 10)
+--                         >=> testLeft (`div` 10)
+--                         >=> testLeftmost
+--                         >=> testRight show
+--                         >=> testRight show
+--                         >=> testRight show
+--                         >=> testRightmost
+--                         >=> pure . Traversable.fromBisected
+--                           )
+-- :}
+-- [10] [2,3]
+-- [10,20] [3]
+-- [10,20,30] []
+-- [10,20] [3]
+-- [10] [2,3]
+-- [] [1,2,3]
+-- ["1"] [2,3]
+-- ["1","2"] [3]
+-- ["1","2","3"] []
+-- ["1","2","3"]
+
 
 fromTraversable
   :: Traversable t
