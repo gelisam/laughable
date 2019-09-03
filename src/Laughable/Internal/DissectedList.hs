@@ -50,8 +50,7 @@ import Data.Sequence (Seq)
 --           printDissectedList d
 --           pure d
 --     testLeftmost
---       :: (Show c, Show j)
---       => DissectedList c () j
+--       :: DissectedList c () j
 --       -> IO (DissectedList void () j)
 --     testLeftmost d = do
 --       case climbLeft d of
@@ -60,8 +59,7 @@ import Data.Sequence (Seq)
 --         Right _ -> do
 --           error "testClimbLeft: climbLeft does not think we're at the leftmost position"
 --     testRightmost
---       :: (Show c, Show j)
---       => DissectedList c () j
+--       :: DissectedList c () j
 --       -> IO (DissectedList c () void)
 --     testRightmost d = do
 --       case climbRight d of
